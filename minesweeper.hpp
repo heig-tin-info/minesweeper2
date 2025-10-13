@@ -2,8 +2,8 @@
 
 #include <iomanip>
 #include <sstream>
-#include <string>
 #include <stdexcept>
+#include <string>
 
 #include "board.hpp"
 #include "ports.hpp"
@@ -54,15 +54,18 @@ class GameCore : public IIntentSink, public IOutSnapshot {
     explicit GameCore(Dimensions dims);
 };
 
-inline GameCore::Dimensions GameCore::validateConfig(int rows, int cols, int bombs) {
-    if (rows <= 0 || cols <= 0) throw std::invalid_argument("Dimensions must be positive");
+inline GameCore::Dimensions GameCore::validateConfig(int rows, int cols,
+                                                     int bombs) {
+    if (rows <= 0 || cols <= 0)
+        throw std::invalid_argument("Dimensions must be positive");
     if (bombs <= 0) throw std::invalid_argument("Bomb count must be positive");
 
     const size_t sRows = static_cast<size_t>(rows);
     const size_t sCols = static_cast<size_t>(cols);
     const size_t sBombs = static_cast<size_t>(bombs);
     if (sBombs >= sRows * sCols)
-        throw std::invalid_argument("Bomb count must leave at least one safe cell");
+        throw std::invalid_argument(
+            "Bomb count must leave at least one safe cell");
 
     return Dimensions{sRows, sCols, sBombs, rows, cols};
 }
@@ -150,9 +153,7 @@ inline void GameCore::handle(const UserIntent& intent) {
     }
 }
 
-inline const IBoardReadable& GameCore::board() const {
-    return presenter_;
-}
+inline const IBoardReadable& GameCore::board() const { return presenter_; }
 
 inline HudSnapshot GameCore::hud() const {
     const int elapsed = timerRunning_ ? stopwatch_.elapsed() : finalElapsed_;
@@ -162,13 +163,9 @@ inline HudSnapshot GameCore::hud() const {
     return hud;
 }
 
-inline int BoardPresenter::width() const {
-    return game.width();
-}
+inline int BoardPresenter::width() const { return game.width(); }
 
-inline int BoardPresenter::height() const {
-    return game.height();
-}
+inline int BoardPresenter::height() const { return game.height(); }
 
 inline CellToken BoardPresenter::at(int x, int y) const {
     const auto& c = game.cell(x, y);

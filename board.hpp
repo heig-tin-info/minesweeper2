@@ -21,7 +21,8 @@ class Cell {
     char getSymbol(bool debug = false) const {
         auto symbol = [this, debug]() -> char {
             if (bomb) return '*';
-            if (neighborBombCount > 0) return static_cast<char>('0' + neighborBombCount);
+            if (neighborBombCount > 0)
+                return static_cast<char>('0' + neighborBombCount);
             return debug ? ':' : ' ';
         };
         if (debug || revealed) return symbol();
@@ -55,7 +56,9 @@ class Board {
 
     void revealAll();
 
-    const Cell& cellAt(size_t col, size_t row) const { return (*this)[{row, col}]; }
+    const Cell& cellAt(size_t col, size_t row) const {
+        return (*this)[{row, col}];
+    }
 
    private:
     std::vector<Cell> cells;
@@ -72,10 +75,12 @@ class Board {
     std::mt19937 g;
 
     static constexpr std::array<std::pair<int, int>, 8> deltas = {
-        std::pair{-1, -1}, {-1, 0}, {-1, 1}, {0, -1},
-        {0, 1},            {1, -1}, {1, 0},  {1, 1}};
+        std::pair{-1, -1}, {-1, 0}, {-1, 1}, {0, -1}, {0, 1},
+        {1, -1},           {1, 0},  {1, 1}};
 
-    size_t index(coord_t coord) const { return coord.first * cols + coord.second; }
+    size_t index(coord_t coord) const {
+        return coord.first * cols + coord.second;
+    }
 
     void initialize(coord_t first);
     void updateAdjacentBombs();
@@ -84,12 +89,9 @@ class Board {
 };
 
 inline Board::Board(size_t rows_, size_t cols_, size_t bombs_)
-    : cells(rows_ * cols_),
-      rows(rows_),
-      cols(cols_),
-      bombs(bombs_),
-      g(rd()) {
-    if (rows == 0 || cols == 0) throw std::invalid_argument("Board dimensions must be > 0");
+    : cells(rows_ * cols_), rows(rows_), cols(cols_), bombs(bombs_), g(rd()) {
+    if (rows == 0 || cols == 0)
+        throw std::invalid_argument("Board dimensions must be > 0");
     if (bombs >= rows * cols)
         throw std::invalid_argument("Bomb count must be less than total cells");
     leftToReveal = rows * cols - bombs;
@@ -140,7 +142,8 @@ inline void Board::initialize(coord_t first) {
         if (++placed == bombs) break;
     }
     if (placed != bombs)
-        throw std::runtime_error("Unable to place all bombs (board too small for safe first move)");
+        throw std::runtime_error(
+            "Unable to place all bombs (board too small for safe first move)");
 
     updateAdjacentBombs();
     initialized = true;
@@ -152,8 +155,10 @@ inline int Board::countAdjacentBombs(coord_t coord) const {
         const int nr = static_cast<int>(coord.first) + dy;
         const int nc = static_cast<int>(coord.second) + dx;
         if (nr < 0 || nc < 0) continue;
-        if (nr >= static_cast<int>(rows) || nc >= static_cast<int>(cols)) continue;
-        const auto neighbor = coord_t{static_cast<size_t>(nr), static_cast<size_t>(nc)};
+        if (nr >= static_cast<int>(rows) || nc >= static_cast<int>(cols))
+            continue;
+        const auto neighbor =
+            coord_t{static_cast<size_t>(nr), static_cast<size_t>(nc)};
         if ((*this)[neighbor].bomb) ++count;
     }
     return count;
@@ -163,7 +168,8 @@ inline void Board::updateAdjacentBombs() {
     for (size_t row = 0; row < rows; ++row)
         for (size_t col = 0; col < cols; ++col) {
             auto& cell = (*this)[{row, col}];
-            if (!cell.bomb) cell.neighborBombCount = countAdjacentBombs({row, col});
+            if (!cell.bomb)
+                cell.neighborBombCount = countAdjacentBombs({row, col});
         }
 }
 
@@ -179,7 +185,8 @@ inline void Board::expandBlanks(coord_t coord) {
         const int nr = static_cast<int>(coord.first) + dy;
         const int nc = static_cast<int>(coord.second) + dx;
         if (nr < 0 || nc < 0) continue;
-        if (nr >= static_cast<int>(rows) || nc >= static_cast<int>(cols)) continue;
+        if (nr >= static_cast<int>(rows) || nc >= static_cast<int>(cols))
+            continue;
         expandBlanks({static_cast<size_t>(nr), static_cast<size_t>(nc)});
     }
 }

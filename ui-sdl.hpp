@@ -6,8 +6,8 @@
 #include <cmath>
 #include <optional>
 #include <string>
-#include <vector>
 #include <utility>
+#include <vector>
 
 #include "ports.hpp"
 
@@ -31,8 +31,7 @@ class SDLUI {
     bool ready() const { return ready_; }
 
     std::optional<UserIntent> pollIntent();
-    void render(const IBoardReadable& board,
-                const HudSnapshot& hud,
+    void render(const IBoardReadable& board, const HudSnapshot& hud,
                 GameState state);
 
    private:
@@ -52,6 +51,7 @@ class SDLUI {
     int navbarHeight_{56};
     int windowWidth_{0};
     int windowHeight_{0};
+    int frameDelayMs_{16};
 
     SDL_Color background_{34, 40, 49, 255};
     SDL_Color boardBg_{57, 62, 70, 255};
@@ -78,13 +78,8 @@ class SDLUI {
     void clearWithColor(SDL_Color color);
     void fillRect(SDL_Rect rect, SDL_Color color);
     void drawRect(SDL_Rect rect, SDL_Color color);
-    void renderText(const std::string& text,
-                    TTF_Font* font,
-                    SDL_Color color,
-                    int x,
-                    int y,
-                    bool centerX = false,
-                    bool centerY = false);
+    void renderText(const std::string& text, TTF_Font* font, SDL_Color color,
+                    int x, int y, bool centerX = false, bool centerY = false);
 
     std::pair<CellKind, char> classifyToken(const CellToken& token) const;
     SDL_Color colorForKind(CellKind kind, int parity) const;
@@ -93,8 +88,7 @@ class SDLUI {
     std::optional<Pos> cellFromMouse(int mx, int my) const;
 };
 
-inline SDLUI::SDLUI(int cols, int rows)
-    : SDLUI(cols, rows, Config{}) {}
+inline SDLUI::SDLUI(int cols, int rows) : SDLUI(cols, rows, Config{}) {}
 
 inline SDLUI::SDLUI(int cols, int rows, Config cfg)
     : cols_(cols), rows_(rows), cfg_(std::move(cfg)) {
@@ -128,19 +122,16 @@ inline bool SDLUI::initSDL() {
 
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "1");
 
-    window_ = SDL_CreateWindow("Minesweeper",
-                               SDL_WINDOWPOS_CENTERED,
-                               SDL_WINDOWPOS_CENTERED,
-                               windowWidth_,
-                               windowHeight_,
-                               SDL_WINDOW_SHOWN);
+    window_ = SDL_CreateWindow("Minesweeper", SDL_WINDOWPOS_CENTERED,
+                               SDL_WINDOWPOS_CENTERED, windowWidth_,
+                               windowHeight_, SDL_WINDOW_SHOWN);
     if (!window_) {
         SDL_Log("SDL_CreateWindow failed: %s", SDL_GetError());
         return false;
     }
 
-    renderer_ =
-        SDL_CreateRenderer(window_, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+    renderer_ = SDL_CreateRenderer(
+        window_, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
     if (!renderer_) {
         SDL_Log("SDL_CreateRenderer failed: %s", SDL_GetError());
         return false;
@@ -153,7 +144,9 @@ inline bool SDLUI::loadFonts() {
     auto tryOpenFont = [](const std::string& path, int size) -> TTF_Font* {
         if (path.empty()) return nullptr;
         TTF_Font* f = TTF_OpenFont(path.c_str(), size);
-        if (!f) SDL_Log("TTF_OpenFont failed for %s: %s", path.c_str(), TTF_GetError());
+        if (!f)
+            SDL_Log("TTF_OpenFont failed for %s: %s", path.c_str(),
+                    TTF_GetError());
         return f;
     };
 
@@ -162,7 +155,8 @@ inline bool SDLUI::loadFonts() {
 
     if (!fontNavbar_ || !fontCell_) {
         const char* fallback =
-            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf";  // common on Linux
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf";  // common on
+                                                                // Linux
         fontNavbar_ = fontNavbar_ ? fontNavbar_
                                   : tryOpenFont(fallback, cfg_.font_navbar_px);
         fontCell_ =
@@ -208,12 +202,8 @@ inline void SDLUI::drawRect(SDL_Rect rect, SDL_Color color) {
     SDL_RenderDrawRect(renderer_, &rect);
 }
 
-inline void SDLUI::renderText(const std::string& text,
-                              TTF_Font* font,
-                              SDL_Color color,
-                              int x,
-                              int y,
-                              bool centerX,
+inline void SDLUI::renderText(const std::string& text, TTF_Font* font,
+                              SDL_Color color, int x, int y, bool centerX,
                               bool centerY) {
     if (!font || text.empty()) return;
     SDL_Surface* surface = TTF_RenderUTF8_Blended(font, text.c_str(), color);
@@ -227,7 +217,8 @@ inline void SDLUI::renderText(const std::string& text,
     SDL_FreeSurface(surface);
 }
 
-inline std::pair<SDLUI::CellKind, char> SDLUI::classifyToken(const CellToken& token) const {
+inline std::pair<SDLUI::CellKind, char> SDLUI::classifyToken(
+    const CellToken& token) const {
     if (token.empty()) return {CellKind::Empty, ' '};
     char c = token.front();
     switch (c) {
@@ -278,37 +269,48 @@ inline std::optional<Pos> SDLUI::cellFromMouse(int mx, int my) const {
 }
 
 inline std::optional<UserIntent> SDLUI::pollIntent() {
-    SDL_Event e;
-    while (SDL_PollEvent(&e)) {
-        switch (e.type) {
+    if (!ready_) return std::nullopt;
+
+    auto translate = [this](const SDL_Event& ev) -> std::optional<UserIntent> {
+        switch (ev.type) {
             case SDL_QUIT:
                 return UserIntent{Action::Quit, std::nullopt};
             case SDL_KEYDOWN:
-                if (e.key.keysym.sym == SDLK_ESCAPE)
+                if (ev.key.keysym.sym == SDLK_ESCAPE)
                     return UserIntent{Action::Quit, std::nullopt};
-                if (e.key.keysym.sym == SDLK_r)
+                if (ev.key.keysym.sym == SDLK_r)
                     return UserIntent{Action::NewGame, std::nullopt};
-                if (e.key.keysym.sym == SDLK_SPACE)
+                if (ev.key.keysym.sym == SDLK_SPACE)
                     return UserIntent{Action::Redraw, std::nullopt};
                 break;
             case SDL_MOUSEBUTTONDOWN: {
-                auto pos = cellFromMouse(e.button.x, e.button.y);
+                auto pos = cellFromMouse(ev.button.x, ev.button.y);
                 if (!pos) break;
-                if (e.button.button == SDL_BUTTON_LEFT)
+                if (ev.button.button == SDL_BUTTON_LEFT)
                     return UserIntent{Action::Reveal, pos};
-                if (e.button.button == SDL_BUTTON_RIGHT)
+                if (ev.button.button == SDL_BUTTON_RIGHT)
                     return UserIntent{Action::ToggleFlag, pos};
                 break;
             }
             default:
                 break;
         }
+        return std::nullopt;
+    };
+
+    SDL_Event event;
+    if (!SDL_PollEvent(&event)) {
+        if (!SDL_WaitEventTimeout(&event, frameDelayMs_)) return std::nullopt;
     }
+
+    do {
+        if (auto intent = translate(event)) return intent;
+    } while (SDL_PollEvent(&event));
+
     return std::nullopt;
 }
 
-inline void SDLUI::render(const IBoardReadable& board,
-                          const HudSnapshot& hud,
+inline void SDLUI::render(const IBoardReadable& board, const HudSnapshot& hud,
                           GameState state) {
     if (!ready_) return;
 
@@ -316,27 +318,22 @@ inline void SDLUI::render(const IBoardReadable& board,
 
     SDL_Rect navbar{0, 0, windowWidth_, navbarHeight_};
     fillRect(navbar, navbarColor_);
-    renderText("Time: " + hud.time_mmss, fontNavbar_, textLight_, 16, navbarHeight_ / 2, false, true);
+    renderText("Time: " + hud.time_mmss, fontNavbar_, textLight_, 16,
+               navbarHeight_ / 2, false, true);
     std::string bombs = "Bombs: " + hud.count;
-    renderText(bombs,
-               fontNavbar_,
-               textLight_,
-               windowWidth_ - 16,
-               navbarHeight_ / 2,
-               true,
-               true);
+    renderText(bombs, fontNavbar_, textLight_, windowWidth_ - 16,
+               navbarHeight_ / 2, true, true);
 
     SDL_Rect boardRect{0, navbarHeight_, windowWidth_, rows_ * tileSize_};
     fillRect(boardRect, boardBg_);
 
     for (int row = 0; row < rows_; ++row) {
         for (int col = 0; col < cols_; ++col) {
-            SDL_Rect cellRect{col * tileSize_,
-                              navbarHeight_ + row * tileSize_,
-                              tileSize_,
-                              tileSize_};
+            SDL_Rect cellRect{col * tileSize_, navbarHeight_ + row * tileSize_,
+                              tileSize_, tileSize_};
             auto kind_token = classifyToken(board.at(col, row));
-            SDL_Color tileColor = colorForKind(kind_token.first, (row + col) % 2);
+            SDL_Color tileColor =
+                colorForKind(kind_token.first, (row + col) % 2);
             fillRect(cellRect, tileColor);
             drawRect(cellRect, border_);
 
@@ -345,35 +342,23 @@ inline void SDLUI::render(const IBoardReadable& board,
                 case CellKind::Hidden:
                     break;
                 case CellKind::Flagged:
-                    renderText("F",
-                               fontCell_,
-                               flagColor_,
+                    renderText("F", fontCell_, flagColor_,
                                cellRect.x + tileSize_ / 2,
-                               cellRect.y + tileSize_ / 2,
-                               true,
-                               true);
+                               cellRect.y + tileSize_ / 2, true, true);
                     break;
                 case CellKind::Empty:
                     break;
                 case CellKind::Bomb:
-                    renderText("*",
-                               fontCell_,
-                               textLight_,
+                    renderText("*", fontCell_, textLight_,
                                cellRect.x + tileSize_ / 2,
-                               cellRect.y + tileSize_ / 2,
-                               true,
-                               true);
+                               cellRect.y + tileSize_ / 2, true, true);
                     break;
                 case CellKind::Number: {
                     SDL_Color digitColor = colorForDigit(glyph);
                     std::string text(1, glyph);
-                    renderText(text,
-                               fontCell_,
-                               digitColor,
+                    renderText(text, fontCell_, digitColor,
                                cellRect.x + tileSize_ / 2,
-                               cellRect.y + tileSize_ / 2,
-                               true,
-                               true);
+                               cellRect.y + tileSize_ / 2, true, true);
                     break;
                 }
             }
@@ -389,20 +374,11 @@ inline void SDLUI::render(const IBoardReadable& board,
 
         std::string message =
             state == GameState::Won ? "You win!" : "Game over!";
-        renderText(message,
-                   fontNavbar_,
-                   textLight_,
+        renderText(message, fontNavbar_, textLight_, windowWidth_ / 2,
+                   navbarHeight_ + (rows_ * tileSize_) / 2, true, true);
+        renderText("Press R for new game", fontCell_, textLight_,
                    windowWidth_ / 2,
-                   navbarHeight_ + (rows_ * tileSize_) / 2,
-                   true,
-                   true);
-        renderText("Press R for new game",
-                   fontCell_,
-                   textLight_,
-                   windowWidth_ / 2,
-                   navbarHeight_ + (rows_ * tileSize_) / 2 + 40,
-                   true,
-                   true);
+                   navbarHeight_ + (rows_ * tileSize_) / 2 + 40, true, true);
     }
 
     SDL_RenderPresent(renderer_);

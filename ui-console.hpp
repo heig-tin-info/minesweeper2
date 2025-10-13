@@ -11,6 +11,8 @@
 
 class ConsoleUI {
    public:
+    bool ready() const { return true; }
+
     void render(const IBoardReadable& b, const HudSnapshot& hud) {
         const int W = b.width(), H = b.height();
 
