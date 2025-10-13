@@ -1,7 +1,8 @@
+#include "minesweeper.hpp"
 #include "ui-console.hpp"
 
 int main() {
-    GameCore game(3, 3);
+    GameCore game(8, 8, 5);
     ConsoleUI ui;
 
     ui.render(game.board(), game.hud());
