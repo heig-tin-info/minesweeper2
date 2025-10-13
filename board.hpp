@@ -34,27 +34,96 @@ class Board {
    public:
     using coord_t = std::pair<size_t, size_t>;
 
-    Board(size_t rows = 7, size_t cols = 7, size_t bombs = 5);
+    Board(size_t rows = 7, size_t cols = 7, size_t bombs = 5)
+        : cells(rows * cols), rows(rows), cols(cols), bombs(bombs), g(rd()) {
+        if (rows == 0 || cols == 0) {
+            throw std::invalid_argument("Board dimensions must be > 0");
+        }
+        if (bombs >= rows * cols) {
+            throw std::invalid_argument(
+                "Bomb count must be less than total cells");
+        }
+        leftToReveal = rows * cols - bombs;
+        initialized = false;
+    }
 
     size_t width() const { return cols; }
     size_t height() const { return rows; }
 
-    Cell& operator[](coord_t const& p);
-    const Cell& operator[](coord_t const& p) const;
+    Cell& operator[](coord_t const& p) {
+        const size_t row = p.first;
+        const size_t col = p.second;
+        if (row >= rows || col >= cols) throw std::out_of_range("Invalid cell");
+        return cells[index(p)];
+    }
 
-    bool isInside(coord_t const& p) const;
+    const Cell& operator[](coord_t const& p) const {
+        const size_t row = p.first;
+        const size_t col = p.second;
+        if (row >= rows || col >= cols) throw std::out_of_range("Invalid cell");
+        return cells[index(p)];
+    }
 
-    void reset();
-    bool reveal(coord_t coord);
-    void toggleFlag(coord_t coord);
+    bool isInside(coord_t const& p) const {
+        return p.first < rows && p.second < cols;
+    }
 
-    int bombsRemaining() const;
+    void reset() {
+        for (auto& cell : cells) cell = Cell{};
+        flagged = 0;
+        leftToReveal = rows * cols - bombs;
+        initialized = false;
+    }
+
+    bool reveal(coord_t coord) {
+        if (!isInside(coord)) throw std::out_of_range("Reveal outside board");
+
+        auto& cell = (*this)[coord];
+        if (cell.revealed) return true;
+        if (cell.flagged) return true;
+
+        if (!initialized) initialize(coord);
+
+        if (cell.bomb) return false;
+
+        expandBlanks(coord);
+        return true;
+    }
+
+    void toggleFlag(coord_t coord) {
+        if (!isInside(coord)) throw std::out_of_range("Flag outside board");
+
+        auto& cell = (*this)[coord];
+        if (cell.revealed) return;
+
+        if (cell.flagged) {
+            cell.flagged = false;
+            if (flagged > 0) --flagged;
+        } else {
+            cell.flagged = true;
+            ++flagged;
+        }
+    }
+
+    int bombsRemaining() const {
+        const size_t remaining = bombs > flagged ? bombs - flagged : 0;
+        return static_cast<int>(remaining);
+    }
+
     size_t flaggedCount() const { return flagged; }
     size_t unrevealedSafeCount() const { return leftToReveal; }
 
     bool isInitialized() const { return initialized; }
 
-    void revealAll();
+    void revealAll() {
+        flagged = 0;
+        for (auto& cell : cells) {
+            if (!cell.revealed && !cell.bomb && leftToReveal > 0)
+                --leftToReveal;
+            cell.revealed = true;
+            cell.flagged = false;
+        }
+    }
 
     const Cell& cellAt(size_t col, size_t row) const {
         return (*this)[{row, col}];
@@ -82,155 +151,75 @@ class Board {
         return coord.first * cols + coord.second;
     }
 
-    void initialize(coord_t first);
-    void updateAdjacentBombs();
-    int countAdjacentBombs(coord_t coord) const;
-    void expandBlanks(coord_t coord);
-};
-
-inline Board::Board(size_t rows_, size_t cols_, size_t bombs_)
-    : cells(rows_ * cols_), rows(rows_), cols(cols_), bombs(bombs_), g(rd()) {
-    if (rows == 0 || cols == 0)
-        throw std::invalid_argument("Board dimensions must be > 0");
-    if (bombs >= rows * cols)
-        throw std::invalid_argument("Bomb count must be less than total cells");
-    leftToReveal = rows * cols - bombs;
-    initialized = false;
-}
-
-inline Cell& Board::operator[](coord_t const& p) {
-    const size_t row = p.first;
-    const size_t col = p.second;
-    if (row >= rows || col >= cols) throw std::out_of_range("Invalid cell");
-    return cells[index(p)];
-}
-
-inline const Cell& Board::operator[](coord_t const& p) const {
-    const size_t row = p.first;
-    const size_t col = p.second;
-    if (row >= rows || col >= cols) throw std::out_of_range("Invalid cell");
-    return cells[index(p)];
-}
-
-inline bool Board::isInside(coord_t const& p) const {
-    return p.first < rows && p.second < cols;
-}
-
-inline void Board::reset() {
-    for (auto& cell : cells) cell = Cell{};
-    flagged = 0;
-    leftToReveal = rows * cols - bombs;
-    initialized = false;
-}
-
-inline void Board::initialize(coord_t first) {
-    if (initialized) return;
-    for (auto& cell : cells) {
-        cell.bomb = false;
-        cell.neighborBombCount = 0;
-    }
-
-    const size_t forbidden = index(first);
-    std::vector<size_t> indices(cells.size());
-    std::iota(indices.begin(), indices.end(), 0);
-    std::shuffle(indices.begin(), indices.end(), g);
-
-    size_t placed = 0;
-    for (size_t idx : indices) {
-        if (idx == forbidden) continue;
-        cells[idx].bomb = true;
-        if (++placed == bombs) break;
-    }
-    if (placed != bombs)
-        throw std::runtime_error(
-            "Unable to place all bombs (board too small for safe first move)");
-
-    updateAdjacentBombs();
-    initialized = true;
-}
-
-inline int Board::countAdjacentBombs(coord_t coord) const {
-    int count = 0;
-    for (auto [dy, dx] : deltas) {
-        const int nr = static_cast<int>(coord.first) + dy;
-        const int nc = static_cast<int>(coord.second) + dx;
-        if (nr < 0 || nc < 0) continue;
-        if (nr >= static_cast<int>(rows) || nc >= static_cast<int>(cols))
-            continue;
-        const auto neighbor =
-            coord_t{static_cast<size_t>(nr), static_cast<size_t>(nc)};
-        if ((*this)[neighbor].bomb) ++count;
-    }
-    return count;
-}
-
-inline void Board::updateAdjacentBombs() {
-    for (size_t row = 0; row < rows; ++row)
-        for (size_t col = 0; col < cols; ++col) {
-            auto& cell = (*this)[{row, col}];
-            if (!cell.bomb)
-                cell.neighborBombCount = countAdjacentBombs({row, col});
+    int countAdjacentBombs(coord_t coord) const {
+        int count = 0;
+        for (auto [dy, dx] : deltas) {
+            const int nr = static_cast<int>(coord.first) + dy;
+            const int nc = static_cast<int>(coord.second) + dx;
+            if (nr < 0 || nc < 0) continue;
+            if (nr >= static_cast<int>(rows) || nc >= static_cast<int>(cols))
+                continue;
+            const auto neighbor =
+                coord_t{static_cast<size_t>(nr), static_cast<size_t>(nc)};
+            if ((*this)[neighbor].bomb) ++count;
         }
-}
-
-inline void Board::expandBlanks(coord_t coord) {
-    auto& cell = (*this)[coord];
-    if (cell.revealed || cell.flagged) return;
-    if (cell.bomb) return;
-    cell.revealed = true;
-    if (leftToReveal > 0) --leftToReveal;
-    if (cell.neighborBombCount != 0) return;
-
-    for (auto [dy, dx] : deltas) {
-        const int nr = static_cast<int>(coord.first) + dy;
-        const int nc = static_cast<int>(coord.second) + dx;
-        if (nr < 0 || nc < 0) continue;
-        if (nr >= static_cast<int>(rows) || nc >= static_cast<int>(cols))
-            continue;
-        expandBlanks({static_cast<size_t>(nr), static_cast<size_t>(nc)});
+        return count;
     }
-}
 
-inline bool Board::reveal(coord_t coord) {
-    if (!isInside(coord)) throw std::out_of_range("Reveal outside board");
-
-    auto& cell = (*this)[coord];
-    if (cell.revealed) return true;
-    if (cell.flagged) return true;
-
-    if (!initialized) initialize(coord);
-
-    if (cell.bomb) return false;
-
-    expandBlanks(coord);
-    return true;
-}
-
-inline void Board::toggleFlag(coord_t coord) {
-    if (!isInside(coord)) throw std::out_of_range("Flag outside board");
-
-    auto& cell = (*this)[coord];
-    if (cell.revealed) return;
-
-    if (cell.flagged) {
-        cell.flagged = false;
-        if (flagged > 0) --flagged;
-    } else {
-        cell.flagged = true;
-        ++flagged;
+    void updateAdjacentBombs() {
+        for (size_t row = 0; row < rows; ++row) {
+            for (size_t col = 0; col < cols; ++col) {
+                auto& cell = (*this)[{row, col}];
+                if (!cell.bomb) {
+                    cell.neighborBombCount = countAdjacentBombs({row, col});
+                }
+            }
+        }
     }
-}
 
-inline int Board::bombsRemaining() const {
-    const size_t remaining = bombs > flagged ? bombs - flagged : 0;
-    return static_cast<int>(remaining);
-}
+    void initialize(coord_t first) {
+        if (initialized) return;
+        for (auto& cell : cells) {
+            cell.bomb = false;
+            cell.neighborBombCount = 0;
+        }
 
-inline void Board::revealAll() {
-    flagged = 0;
-    for (auto& cell : cells) {
-        if (!cell.revealed && !cell.bomb && leftToReveal > 0) --leftToReveal;
+        const size_t forbidden = index(first);
+        std::vector<size_t> indices(cells.size());
+        std::iota(indices.begin(), indices.end(), 0);
+        std::shuffle(indices.begin(), indices.end(), g);
+
+        size_t placed = 0;
+        for (size_t idx : indices) {
+            if (idx == forbidden) continue;
+            cells[idx].bomb = true;
+            if (++placed == bombs) break;
+        }
+        if (placed != bombs) {
+            throw std::runtime_error(
+                "Unable to place all bombs (board too small for safe first "
+                "move)");
+        }
+
+        updateAdjacentBombs();
+        initialized = true;
+    }
+
+    void expandBlanks(coord_t coord) {
+        auto& cell = (*this)[coord];
+        if (cell.revealed || cell.flagged) return;
+        if (cell.bomb) return;
         cell.revealed = true;
-        cell.flagged = false;
+        if (leftToReveal > 0) --leftToReveal;
+        if (cell.neighborBombCount != 0) return;
+
+        for (auto [dy, dx] : deltas) {
+            const int nr = static_cast<int>(coord.first) + dy;
+            const int nc = static_cast<int>(coord.second) + dx;
+            if (nr < 0 || nc < 0) continue;
+            if (nr >= static_cast<int>(rows) || nc >= static_cast<int>(cols))
+                continue;
+            expandBlanks({static_cast<size_t>(nr), static_cast<size_t>(nc)});
+        }
     }
-}
+};

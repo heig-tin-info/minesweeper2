@@ -1,4 +1,5 @@
 #include <iostream>
+#include <string>
 
 #include "minesweeper.hpp"
 
@@ -9,19 +10,43 @@
 #endif
 
 namespace {
-#ifdef SDL
-constexpr int kRows = 16;
-constexpr int kCols = 16;
-constexpr int kBombs = 20;
-#else
-constexpr int kRows = 8;
-constexpr int kCols = 8;
-constexpr int kBombs = 5;
-#endif
+struct GameConfig {
+    int rows;
+    int cols;
+    int bombs;
+};
+
+constexpr GameConfig kDefaultConfig{10, 10, 10};
+
+bool parseArgs(int argc, char* argv[], GameConfig& config) {
+    config = kDefaultConfig;
+    if (argc == 1) return true;
+    if (argc != 4) return false;
+
+    try {
+        config.rows = std::stoi(argv[1]);
+        config.cols = std::stoi(argv[2]);
+        config.bombs = std::stoi(argv[3]);
+    } catch (const std::exception&) {
+        return false;
+    }
+
+    if (config.rows <= 0 || config.cols <= 0 || config.bombs <= 0) return false;
+    if (static_cast<long long>(config.rows) * config.cols <= config.bombs)
+        return false;
+    return true;
+}
 }  // namespace
 
-int main() {
-    GameCore game(kRows, kCols, kBombs);
+int main(int argc, char* argv[]) {
+    GameConfig config{};
+    if (!parseArgs(argc, argv, config)) {
+        std::cerr << "Usage: " << argv[0] << " [rows cols bombs]\n"
+                  << "Example: " << argv[0] << " 16 16 20\n";
+        return 1;
+    }
+
+    GameCore game(config.rows, config.cols, config.bombs);
 
 #ifdef SDL
     SDLUI ui(game.width(), game.height());
