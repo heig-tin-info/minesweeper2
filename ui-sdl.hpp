@@ -46,6 +46,8 @@ class SDLUI {
     SDL_Renderer* renderer_{nullptr};
     TTF_Font* fontNavbar_{nullptr};
     TTF_Font* fontCell_{nullptr};
+    int fontNavbarSize_{0};
+    int fontCellSize_{0};
 
     int tileSize_{32};
     int navbarHeight_{56};
@@ -79,7 +81,9 @@ class SDLUI {
     void fillRect(SDL_Rect rect, SDL_Color color);
     void drawRect(SDL_Rect rect, SDL_Color color);
     void renderText(const std::string& text, TTF_Font* font, SDL_Color color,
-                    int x, int y, bool centerX = false, bool centerY = false);
+                    int x, int y, bool centerX = false, bool centerY = false,
+                    int maxWidth = -1, int maxHeight = -1,
+                    bool alignRight = false);
 
     std::pair<CellKind, char> classifyToken(const CellToken& token) const;
     SDL_Color colorForKind(CellKind kind, int parity) const;
@@ -204,12 +208,23 @@ inline void SDLUI::drawRect(SDL_Rect rect, SDL_Color color) {
 
 inline void SDLUI::renderText(const std::string& text, TTF_Font* font,
                               SDL_Color color, int x, int y, bool centerX,
-                              bool centerY) {
+                              bool centerY, int maxWidth, int maxHeight,
+                              bool alignRight) {
     if (!font || text.empty()) return;
     SDL_Surface* surface = TTF_RenderUTF8_Blended(font, text.c_str(), color);
     if (!surface) return;
     SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer_, surface);
     SDL_Rect dst{x, y, surface->w, surface->h};
+    float scale = 1.0f;
+    if (maxWidth > 0 && dst.w > maxWidth)
+        scale = std::min(scale, static_cast<float>(maxWidth) / dst.w);
+    if (maxHeight > 0 && dst.h > maxHeight)
+        scale = std::min(scale, static_cast<float>(maxHeight) / dst.h);
+    if (scale != 1.0f) {
+        dst.w = static_cast<int>(dst.w * scale);
+        dst.h = static_cast<int>(dst.h * scale);
+    }
+    if (alignRight) dst.x -= dst.w;
     if (centerX) dst.x -= dst.w / 2;
     if (centerY) dst.y -= dst.h / 2;
     SDL_RenderCopy(renderer_, texture, nullptr, &dst);
@@ -319,10 +334,12 @@ inline void SDLUI::render(const IBoardReadable& board, const HudSnapshot& hud,
     SDL_Rect navbar{0, 0, windowWidth_, navbarHeight_};
     fillRect(navbar, navbarColor_);
     renderText("Time: " + hud.time_mmss, fontNavbar_, textLight_, 16,
-               navbarHeight_ / 2, false, true);
+               navbarHeight_ / 2, false, true, windowWidth_ / 2 - 32,
+               navbarHeight_ - 8);
     std::string bombs = "Bombs: " + hud.count;
     renderText(bombs, fontNavbar_, textLight_, windowWidth_ - 16,
-               navbarHeight_ / 2, true, true);
+               navbarHeight_ / 2, false, true, windowWidth_ / 2 - 32,
+               navbarHeight_ - 8, true);
 
     SDL_Rect boardRect{0, navbarHeight_, windowWidth_, rows_ * tileSize_};
     fillRect(boardRect, boardBg_);
@@ -344,21 +361,24 @@ inline void SDLUI::render(const IBoardReadable& board, const HudSnapshot& hud,
                 case CellKind::Flagged:
                     renderText("F", fontCell_, flagColor_,
                                cellRect.x + tileSize_ / 2,
-                               cellRect.y + tileSize_ / 2, true, true);
+                               cellRect.y + tileSize_ / 2, true, true,
+                               tileSize_ - 6, tileSize_ - 6);
                     break;
                 case CellKind::Empty:
                     break;
                 case CellKind::Bomb:
                     renderText("*", fontCell_, textLight_,
                                cellRect.x + tileSize_ / 2,
-                               cellRect.y + tileSize_ / 2, true, true);
+                               cellRect.y + tileSize_ / 2, true, true,
+                               tileSize_ - 6, tileSize_ - 6);
                     break;
                 case CellKind::Number: {
                     SDL_Color digitColor = colorForDigit(glyph);
                     std::string text(1, glyph);
                     renderText(text, fontCell_, digitColor,
                                cellRect.x + tileSize_ / 2,
-                               cellRect.y + tileSize_ / 2, true, true);
+                               cellRect.y + tileSize_ / 2, true, true,
+                               tileSize_ - 6, tileSize_ - 6);
                     break;
                 }
             }
@@ -375,10 +395,12 @@ inline void SDLUI::render(const IBoardReadable& board, const HudSnapshot& hud,
         std::string message =
             state == GameState::Won ? "You win!" : "Game over!";
         renderText(message, fontNavbar_, textLight_, windowWidth_ / 2,
-                   navbarHeight_ + (rows_ * tileSize_) / 2, true, true);
+                   navbarHeight_ + (rows_ * tileSize_) / 2, true, true,
+                   windowWidth_ - 40, navbarHeight_);
         renderText("Press R for new game", fontCell_, textLight_,
                    windowWidth_ / 2,
-                   navbarHeight_ + (rows_ * tileSize_) / 2 + 40, true, true);
+                   navbarHeight_ + (rows_ * tileSize_) / 2 + 40, true, true,
+                   windowWidth_ - 40, navbarHeight_);
     }
 
     SDL_RenderPresent(renderer_);

@@ -25,8 +25,6 @@ class GameCore : public IIntentSink, public IOutSnapshot {
     const Cell& cell(int x, int y) const;
 
    private:
-    using coord_t = Board::coord_t;
-
     Board board_;
     GameState state_{GameState::InProgress};
     Stopwatch stopwatch_;
@@ -130,23 +128,24 @@ inline void GameCore::handle(const UserIntent& intent) {
     if (state_ != GameState::InProgress) return;
     if (!intent.where || !inBounds(*intent.where)) return;
 
-    const coord_t coord{static_cast<size_t>(intent.where->y),
-                        static_cast<size_t>(intent.where->x)};
+    const Coord coord{static_cast<index_t>(intent.where->y),
+                      static_cast<index_t>(intent.where->x)};
 
     if (intent.action == Action::ToggleFlag) {
         board_.toggleFlag(coord);
         return;
     }
 
-    const bool safe = board_.reveal(coord);
-    if (!safe) {
+    const auto result = board_.reveal(coord);
+    if (result == Board::RevealResult::HitBomb) {
         state_ = GameState::Lost;
         board_.revealAll();
         stopTimer();
         return;
     }
 
-    if (board_.unrevealedSafeCount() == 0) {
+    if (result == Board::RevealResult::Victory ||
+        board_.unrevealedSafeCount() == 0) {
         state_ = GameState::Won;
         board_.revealAll();
         stopTimer();
