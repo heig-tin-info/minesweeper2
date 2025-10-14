@@ -35,18 +35,15 @@ interfaces abstaites et des structures de données immuables pour publier son
 
 ### Couche domaine
 
-- **`Board`** (`board.hpp`) est l’agrégat central. Il stocke la grille, place les
-  bombes (avec graine optionnelle), exécute la révélation par flood fill, gère
-  les drapeaux et l’état de victoire/défaite. Tout est encapsulé : aucune UI ne
-  touche aux cellules directement.
+- **`Board`** (`board.hpp`) est l’agrégat central. Il stocke la grille,
+  place les bombes (avec graine optionnelle), exécute la révélation par flood fill, gère les drapeaux et l’état de victoire/défaite. Tout est encapsulé : aucune UI ne touche aux cellules directement.
 - **`GameCore`** (`minesweeper.hpp`) orchestre le modèle. Il implémente le port
   d’entrée `IIntentSink` pour recevoir les commandes et le port de sortie
   `IOutSnapshot` pour exposer l’état actuel. C’est lui qui:
   - traduit une intention en mutations sur `Board`,
   - déclenche les transitions de `GameState`,
   - gère le chronomètre (`Stopwatch`) et publie le HUD.
-- **`Stopwatch`** (`stopwatch.hpp`) fournit un service minimal de mesure du temps
-  écoulé, indépendant du reste.
+- **`Stopwatch`** (`stopwatch.hpp`) fournit un service minimal de mesure du temps écoulé, indépendant du reste.
 
 Cette couche est dénuée d’`iostream`, de SDL ou de dépendances système : elle
 peut être testée et réutilisée dans n’importe quel contexte.
@@ -167,16 +164,21 @@ Ajouter `-DMINESWEEPER_BUILD_SDL=OFF` pour forcer un build sans SDL.
 ## Personnalisation
 
 - Taille/grille personnalisée :
+
   ```bash
   ./build/minesweeper-console 16 16 40
   ```
+
 - Forcer un rendu console coloré :
+
   ```cpp
   ConsoleUI ui(ConsoleUI::Config{
       .grid_options = ConsoleUI::colourfulGridOptions()
   });
   ```
+
 - Adapter l’UI SDL :
+
   ```cpp
   SDLUI ui(cols, rows, SDLUI::Config{
       .tile_px = 40,
