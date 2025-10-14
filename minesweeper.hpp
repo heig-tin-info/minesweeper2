@@ -1,3 +1,9 @@
+// High-level application core for Minesweeper. This layer coordinates the
+// domain model (`Board`), time tracking (`Stopwatch`), and presentation-facing
+// ports so that both UIs can drive the same behaviour. Everything here follows
+// a ports-and-adapters mindset: the core exposes intent sinks and read-only
+// snapshot providers, while concrete UIs remain oblivious to the internal data
+// structures.
 #pragma once
 
 #include <iomanip>
@@ -10,21 +16,35 @@
 #include "presenter.hpp"
 #include "stopwatch.hpp"
 
+// `GameCore` is the orchestrator: it implements both the input port
+// (`IIntentSink`) and the output snapshot interface (`IOutSnapshot`). UIs talk
+// only to this class, making it the single source of truth for game state and
+// derived HUD data.
 class GameCore : public IIntentSink, public IOutSnapshot {
    public:
+    // Public entry point used by UIs to spawn a fully configured game. The
+    // explicit constructor keeps validation separate so that the call site
+    // remains readable.
     GameCore(int rows = 7, int cols = 7, int bombs = 5);
 
+    // Receives intents from the presentation layer (clicks, restarts, etc.)
+    // and mutates the board accordingly.
     void handle(const UserIntent& intent) override;
 
+    // Expose read-only snapshots that let UIs render without holding direct
+    // references to the underlying board.
     const IBoardReadable& board() const override;
     HudSnapshot hud() const override;
     GameState state() const override { return state_; }
 
+    // Convenience helpers used by presenters to avoid threading board width
+    // through multiple layers.
     int width() const { return static_cast<int>(board_.width()); }
     int height() const { return static_cast<int>(board_.height()); }
     const Cell& cell(int x, int y) const;
 
    private:
+    // Owned sub-systems that together represent the state of the world.
     Board board_;
     GameState state_{GameState::InProgress};
     Stopwatch stopwatch_;
@@ -32,14 +52,18 @@ class GameCore : public IIntentSink, public IOutSnapshot {
     int finalElapsed_{0};
     BoardPresenter presenter_;
 
+    // Cached dimensions for quick boundary checks from user input.
     const int rows_;
     const int cols_;
 
+    // Helpers that encapsulate specific lifecycle responsibilities.
     void newGame();
     bool inBounds(Pos p) const;
     static std::string formatElapsed(int seconds);
     void stopTimer();
 
+    // Canonicalised configuration data so we can carry both size_t (for board)
+    // and int (for UI) representations without repeated casting.
     struct Dimensions {
         size_t rows;
         size_t cols;
@@ -52,6 +76,8 @@ class GameCore : public IIntentSink, public IOutSnapshot {
     explicit GameCore(Dimensions dims);
 };
 
+// Performs defensive validation on incoming parameters so that every public
+// constructor call funnels through a single gatekeeper.
 inline GameCore::Dimensions GameCore::validateConfig(int rows, int cols,
                                                      int bombs) {
     if (rows <= 0 || cols <= 0)
@@ -68,9 +94,12 @@ inline GameCore::Dimensions GameCore::validateConfig(int rows, int cols,
     return Dimensions{sRows, sCols, sBombs, rows, cols};
 }
 
+// Lightweight delegating constructor that keeps caller syntax terse.
 inline GameCore::GameCore(int rows, int cols, int bombs)
     : GameCore(validateConfig(rows, cols, bombs)) {}
 
+// Builds the composed object graph once the configuration is known to be
+// valid, then immediately starts a game.
 inline GameCore::GameCore(Dimensions dims)
     : board_(dims.rows, dims.cols, dims.bombs),
       presenter_(*this),
@@ -79,6 +108,7 @@ inline GameCore::GameCore(Dimensions dims)
     newGame();
 }
 
+// Resets the board and timers so a fresh game can begin.
 inline void GameCore::newGame() {
     board_.reset();
     state_ = GameState::InProgress;
@@ -87,15 +117,20 @@ inline void GameCore::newGame() {
     finalElapsed_ = 0;
 }
 
+// Guard shared by multiple handlers; keeps the rules for valid user clicks in
+// one obvious place.
 inline bool GameCore::inBounds(Pos p) const {
     return p.x >= 0 && p.y >= 0 && p.x < cols_ && p.y < rows_;
 }
 
+// Convenience accessor used by the presenter to translate the board into UI
+// tokens.
 inline const Cell& GameCore::cell(int x, int y) const {
     if (x < 0 || y < 0) throw std::out_of_range("Negative cell coordinate");
     return board_.cellAt(static_cast<size_t>(x), static_cast<size_t>(y));
 }
 
+// Formats elapsed seconds into MM:SS for the HUD.
 inline std::string GameCore::formatElapsed(int seconds) {
     if (seconds < 0) seconds = 0;
     const int minutes = seconds / 60;
@@ -106,12 +141,15 @@ inline std::string GameCore::formatElapsed(int seconds) {
     return oss.str();
 }
 
+// Captures the elapsed time when a game ends so the HUD stays stable.
 inline void GameCore::stopTimer() {
     if (!timerRunning_) return;
     finalElapsed_ = stopwatch_.elapsed();
     timerRunning_ = false;
 }
 
+// Central intent handler: routes commands to the board while managing victory
+// and defeat transitions.
 inline void GameCore::handle(const UserIntent& intent) {
     switch (intent.action) {
         case Action::NewGame:
@@ -152,8 +190,10 @@ inline void GameCore::handle(const UserIntent& intent) {
     }
 }
 
+// Exposes a read-only adapter around the board for rendering layers.
 inline const IBoardReadable& GameCore::board() const { return presenter_; }
 
+// Assembles HUD data (time + remaining bombs) for any presentation layer.
 inline HudSnapshot GameCore::hud() const {
     const int elapsed = timerRunning_ ? stopwatch_.elapsed() : finalElapsed_;
     HudSnapshot hud;
@@ -162,10 +202,14 @@ inline HudSnapshot GameCore::hud() const {
     return hud;
 }
 
+// Pass-through helpers that satisfy the IBoardReadable contract. They let the
+// presenter surface board data without handing over mutating access.
 inline int BoardPresenter::width() const { return game.width(); }
 
 inline int BoardPresenter::height() const { return game.height(); }
 
+// Produces the single-character token representing a cell, which is what every
+// UI ultimately renders.
 inline CellToken BoardPresenter::at(int x, int y) const {
     const auto& c = game.cell(x, y);
     return std::string(1, c.getSymbol());

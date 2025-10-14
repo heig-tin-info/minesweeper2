@@ -1,5 +1,10 @@
 #pragma once
 
+// SDL-based graphical interface. This header keeps the rendering logic inline
+// so students can inspect how intents, board snapshots, and drawing utilities
+// work together. The class balances convenience (automatic window management)
+// with explicit resource handling to highlight RAII patterns in multimedia
+// code.
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
 
@@ -13,6 +18,8 @@
 
 class SDLUI {
    public:
+    // Tweakable parameters that influence window and text sizing. The defaults
+    // are sensible for desktop but can be overridden for experiments.
     struct Config {
         int tile_px = 32;
         int navbar_px = 56;
@@ -28,13 +35,18 @@ class SDLUI {
     SDLUI(const SDLUI&) = delete;
     SDLUI& operator=(const SDLUI&) = delete;
 
+    // Lets callers check whether the window and fonts initialised properly.
     bool ready() const { return ready_; }
 
+    // Polls SDL events and translates them into the intent model understood by
+    // the core.
     std::optional<UserIntent> pollIntent();
+    // Draws the current board, HUD, and optional overlays.
     void render(const IBoardReadable& board, const HudSnapshot& hud,
                 GameState state);
 
    private:
+    // Internal classification used when choosing colours/glyphs for a cell.
     enum class CellKind { Hidden, Flagged, Empty, Number, Bomb };
 
     int cols_;
@@ -66,6 +78,8 @@ class SDLUI {
     SDL_Color flagColor_{231, 76, 60, 255};
     SDL_Color textLight_{236, 240, 241, 255};
 
+    // Palette for digits 1-8. Tweaking these values is an easy visual
+    // experiment for students.
     std::vector<SDL_Color> numberColors_{
         SDL_Color{52, 152, 219, 255}, SDL_Color{46, 204, 113, 255},
         SDL_Color{231, 76, 60, 255},  SDL_Color{155, 89, 182, 255},
@@ -92,8 +106,11 @@ class SDLUI {
     std::optional<Pos> cellFromMouse(int mx, int my) const;
 };
 
+// Convenience overload that uses default configuration values while keeping
+// all logic centralised in the delegated constructor.
 inline SDLUI::SDLUI(int cols, int rows) : SDLUI(cols, rows, Config{}) {}
 
+// Core constructor: stores geometry, then attempts to spin up SDL and fonts.
 inline SDLUI::SDLUI(int cols, int rows, Config cfg)
     : cols_(cols), rows_(rows), cfg_(std::move(cfg)) {
     computeGeometry();
@@ -101,8 +118,10 @@ inline SDLUI::SDLUI(int cols, int rows, Config cfg)
     if (!ready_) teardown();
 }
 
+// Responsible for releasing every SDL resource we acquired.
 inline SDLUI::~SDLUI() { teardown(); }
 
+// Derives pixel metrics from the logical board size and configuration.
 inline void SDLUI::computeGeometry() {
     tileSize_ = std::max(16, cfg_.tile_px);
     navbarHeight_ = std::max(40, cfg_.navbar_px);
@@ -110,6 +129,7 @@ inline void SDLUI::computeGeometry() {
     windowHeight_ = rows_ * tileSize_ + navbarHeight_;
 }
 
+// Creates the window/renderer and ensures SDL subsystems are available.
 inline bool SDLUI::initSDL() {
     if (SDL_WasInit(SDL_INIT_VIDEO) == 0) {
         if (SDL_Init(SDL_INIT_VIDEO) != 0) {
@@ -144,6 +164,9 @@ inline bool SDLUI::initSDL() {
     return true;
 }
 
+// Loads the font resources used for both HUD and cell digits, with a fallback
+// to a system font so the UI remains functional even if the custom asset is
+// missing.
 inline bool SDLUI::loadFonts() {
     auto tryOpenFont = [](const std::string& path, int size) -> TTF_Font* {
         if (path.empty()) return nullptr;
@@ -170,6 +193,8 @@ inline bool SDLUI::loadFonts() {
     return fontNavbar_ && fontCell_;
 }
 
+// Reclaims all SDL resources. Safe to call multiple times, which simplifies
+// error handling in the constructor.
 inline void SDLUI::teardown() {
     if (fontCell_) {
         TTF_CloseFont(fontCell_);
@@ -191,6 +216,8 @@ inline void SDLUI::teardown() {
     if (SDL_WasInit(SDL_INIT_VIDEO)) SDL_Quit();
 }
 
+// Utility wrappers around common renderer operations. They keep the drawing
+// code below more readable.
 inline void SDLUI::clearWithColor(SDL_Color color) {
     SDL_SetRenderDrawColor(renderer_, color.r, color.g, color.b, color.a);
     SDL_RenderClear(renderer_);
@@ -206,6 +233,9 @@ inline void SDLUI::drawRect(SDL_Rect rect, SDL_Color color) {
     SDL_RenderDrawRect(renderer_, &rect);
 }
 
+// Renders text with optional centering, right-alignment, and bounding-box
+// scaling. The scaling logic is what prevents HUD strings from overflowing the
+// window when the board is small.
 inline void SDLUI::renderText(const std::string& text, TTF_Font* font,
                               SDL_Color color, int x, int y, bool centerX,
                               bool centerY, int maxWidth, int maxHeight,
@@ -232,6 +262,8 @@ inline void SDLUI::renderText(const std::string& text, TTF_Font* font,
     SDL_FreeSurface(surface);
 }
 
+// Breaks the presenter's token into a semantic category so we can pick colors
+// and glyphs consistently.
 inline std::pair<SDLUI::CellKind, char> SDLUI::classifyToken(
     const CellToken& token) const {
     if (token.empty()) return {CellKind::Empty, ' '};
@@ -251,6 +283,8 @@ inline std::pair<SDLUI::CellKind, char> SDLUI::classifyToken(
     }
 }
 
+// Chooses the base tile colour. Using parity gives us the subtle checkerboard
+// effect seen in many Minesweeper clients.
 inline SDL_Color SDLUI::colorForKind(CellKind kind, int parity) const {
     switch (kind) {
         case CellKind::Hidden:
@@ -267,6 +301,8 @@ inline SDL_Color SDLUI::colorForKind(CellKind kind, int parity) const {
     return hiddenLight_;
 }
 
+// Maps digits 1-8 to distinct colours. Falls back to a neutral tone if the
+// token is outside that range.
 inline SDL_Color SDLUI::colorForDigit(char digit) const {
     int idx = digit - '1';
     if (idx < 0 || idx >= static_cast<int>(numberColors_.size()))
@@ -274,6 +310,8 @@ inline SDL_Color SDLUI::colorForDigit(char digit) const {
     return numberColors_[idx];
 }
 
+// Converts pixel coordinates into board coordinates, returning nullopt when
+// the cursor is outside the playable area.
 inline std::optional<Pos> SDLUI::cellFromMouse(int mx, int my) const {
     if (my < navbarHeight_) return std::nullopt;
     int boardY = my - navbarHeight_;
@@ -283,6 +321,8 @@ inline std::optional<Pos> SDLUI::cellFromMouse(int mx, int my) const {
     return Pos{col, row};
 }
 
+// Collects SDL events and returns the next translated intent, blocking briefly
+// when idle to avoid busy-waiting.
 inline std::optional<UserIntent> SDLUI::pollIntent() {
     if (!ready_) return std::nullopt;
 
@@ -325,6 +365,7 @@ inline std::optional<UserIntent> SDLUI::pollIntent() {
     return std::nullopt;
 }
 
+// Draws the entire frame: navbar, board, and optional end-of-game overlay.
 inline void SDLUI::render(const IBoardReadable& board, const HudSnapshot& hud,
                           GameState state) {
     if (!ready_) return;

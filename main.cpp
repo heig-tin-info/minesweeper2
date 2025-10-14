@@ -1,3 +1,9 @@
+// Entry point shared by both the console and SDL front-ends. The file keeps
+// the interface-specific logic behind preprocessor switches so that students
+// can study a single `main` while understanding how dependency inversion lets
+// us swap the presentation layer via a compile flag (`-DSDL`). The code also
+// demonstrates minimal argument parsing and delegates all gameplay to
+// `GameCore`, which embodies the application rules.
 #include <iostream>
 #include <string>
 
@@ -10,6 +16,9 @@
 #endif
 
 namespace {
+// Collects the board configuration requested by the user. The default values
+// mirror a classic beginner Minesweeper grid, but exposing the numbers here
+// makes it obvious how the dimensions flow into the game domain object.
 struct GameConfig {
     int rows;
     int cols;
@@ -18,6 +27,11 @@ struct GameConfig {
 
 constexpr GameConfig kDefaultConfig{10, 10, 10};
 
+// Parses optional CLI overrides for the board configuration. We deliberately
+// keep the signature simple (no std::span) so the transformation from raw C
+// arguments to validated domain values is crystal clear for students. The
+// helper ensures that we never create an impossible board (e.g., too many
+// bombs) before we hand control to the core game logic.
 bool parseArgs(int argc, char* argv[], GameConfig& config) {
     config = kDefaultConfig;
     if (argc == 1) return true;
@@ -38,6 +52,10 @@ bool parseArgs(int argc, char* argv[], GameConfig& config) {
 }
 }  // namespace
 
+// Bootstraps the game: parse arguments, build the core model, instantiate the
+// presentation layer, and hand off execution. Everything after configuration
+// happens inside the UI loop so that we keep `main` focused on assembly of
+// collaborating objects rather than on gameplay itself.
 int main(int argc, char* argv[]) {
     GameConfig config{};
     if (!parseArgs(argc, argv, config)) {

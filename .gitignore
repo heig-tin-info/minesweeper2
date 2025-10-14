@@ -1,1 +1,7 @@
 *.o
+*.out
+build/
+build-*/
+minesweeper-*
+.vscode/
+*.swp

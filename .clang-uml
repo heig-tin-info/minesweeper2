@@ -1,0 +1,30 @@
+compilation_database_dir: .
+output_directory: diagrams
+
+diagrams:
+  classes:
+    type: class
+    glob:
+      - "*.cpp"
+      - "*.hpp"
+    include:
+      elements:
+        - "Board"
+        - "Cell"
+        - "Coord"
+        - "GameCore"
+        - "GameCore::Dimensions"
+        - "BoardPresenter"
+        - "IBoardReadable"
+        - "IOutSnapshot"
+        - "IIntentSink"
+        - "UserIntent"
+        - "HudSnapshot"
+        - "ConsoleUI"
+        - "SDLUI"
+        - "SDLUI::Config"
+        - "Stopwatch"
+        - "Pos"
+      element_types: ["class"]   # <= pas "struct"
+    exclude:
+      element_types: ["enum"]    # masque Action, GameState, etc.
