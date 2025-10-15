@@ -31,6 +31,16 @@ Le cœur n’a aucune dépendance sur la présentation : il ne manipule que de
 interfaces abstaites et des structures de données immuables pour publier son
 état, ce qui rend les frontaux remplaçables.
 
+## Aperçu
+
+En mode console :
+
+![Capture d'écran du jeu en mode console](assets/preview-console.png)
+
+En mode graphique :
+
+![Capture d'écran du jeu en mode SDL](assets/preview-gui.png)
+
 ## Architecture détaillée
 
 ### Couche domaine
