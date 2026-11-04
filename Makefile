@@ -9,8 +9,7 @@ CXXFLAGS ?= -std=c++20 -Wall -Wextra -Wpedantic -g
 CXXFLAGS += -MMD -MP   # also track header dependencies (.d files)
 
 BUILD = build
-LIB   = $(BUILD)/src/game.o $(BUILD)/src/play.o \
-        $(BUILD)/src/random_layout.o $(BUILD)/src/console.o
+LIB   = $(BUILD)/src/game.o   # the other modules are header-only
 
 all: minesweeper $(BUILD)/unit_tests
 
