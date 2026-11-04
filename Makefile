@@ -1,22 +1,32 @@
-# Thin wrapper around CMake.
-#   make        build
+# Build the game and its tests.
+#   make        build everything
 #   make test   build and run the tests
 #   make run    play in the terminal (make run ARGS="9 9 10 42")
+#   make clean  remove the build products
 
-BUILD ?= build
-ARGS ?=
+CXX      ?= g++
+CXXFLAGS ?= -std=c++20 -Wall -Wextra -Wpedantic -g
+CXXFLAGS += -MMD -MP   # also track header dependencies (.d files)
 
-.PHONY: all test run clean
+LIB = src/game.o src/play.o src/random_layout.o src/console.o
 
-all:
-	cmake -S . -B $(BUILD)
-	cmake --build $(BUILD) -j
+all: minesweeper tests/tests
 
-test: all
-	./$(BUILD)/tests
+minesweeper: src/main.o $(LIB)
+	$(CXX) $^ -o $@
 
-run: all
-	./$(BUILD)/minesweeper $(ARGS)
+tests/tests: tests/tests.o $(LIB)
+	$(CXX) $^ -o $@
+
+test: tests/tests
+	./tests/tests
+
+run: minesweeper
+	./minesweeper $(ARGS)
 
 clean:
-	rm -rf $(BUILD)
+	rm -f minesweeper tests/tests src/*.o src/*.d tests/*.o tests/*.d
+
+-include $(wildcard src/*.d tests/*.d)
+
+.PHONY: all test run clean

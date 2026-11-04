@@ -1,8 +1,7 @@
 *.o
-*.out
+*.d
+/minesweeper
+/tests/tests
 build/
-build-*/
-docs/diagrams/
 .vscode/
 *.swp
-steps/*/run_tests

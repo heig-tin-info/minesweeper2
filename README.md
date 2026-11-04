@@ -22,6 +22,8 @@ du hasard, et on peut leur brancher d'autres interfaces sans les modifier.
 
 ## Jouer
 
+Prérequis : `make` et un compilateur C++20 (`g++` 11+ ou `clang++` 14+).
+
 ```bash
 make test                     # compile et lance les tests
 make run                      # partie 9x9 avec 10 mines
