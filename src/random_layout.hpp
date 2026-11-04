@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cstdlib>
+#include <ctime>
 
 #include "ports.hpp"
 
@@ -11,6 +12,9 @@
 class RandomLayout : public MineLayout {
 public:
     explicit RandomLayout(unsigned seed) { std::srand(seed); }
+
+    // Without a seed, the current time: a different game at each launch.
+    RandomLayout() : RandomLayout(static_cast<unsigned>(std::time(nullptr))) {}
 
     // Draws random cells until there are enough, skipping the first click
     // and the cells already taken.
