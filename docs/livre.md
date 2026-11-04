@@ -18,45 +18,81 @@ press:
   typesetting:
     paragraph:
       indent: false
+  # The table of contents stops at chapters: every chapter has the same
+  # seven sections, listing them would only add noise.
   preamble: |
+    \renewcommand{\changelocaltocdepth}[1]{\addtocontents{toc}{\protect\setcounter{tocdepth}{0}}\setcounter{tocdepth}{0}}
     \setlength{\parskip}{0.6em plus 0.2em minus 0.1em}
     \setmonofont{DejaVu Sans Mono}[Scale=MatchLowercase]
     \setlist[itemize,1,2,3,4,5,6,7,8,9]{label=\textendash}
   callouts:
     style: fancy
   slots:
-    frontmatter: Le démineur, une vitrine de conception objet
+    frontmatter: Le démineur, une démarche de conception objet
 ---
 
-{include}(README.md)
+
+{raw latex}(\part{Analyser})
 
 {include}(01-le-demineur.md)
 
-{include}(02-vue-ensemble.md)
+{include}(02-elements-du-jeu.md)
 
-{include}(03-objets-valeur.md)
+{include}(03-cas-d-utilisation.md)
 
-{include}(04-encapsulation-invariants.md)
+{include}(04-scenario-boite-noire.md)
 
-{include}(05-agregat.md)
+{raw latex}(\part{Décider l'architecture})
 
-{include}(06-templates.md)
+{include}(05-choisir-une-architecture.md)
 
-{include}(07-polymorphisme-ports.md)
+{include}(06-ports-et-adaptateurs.md)
 
-{include}(08-commandes-requetes.md)
+{include}(07-sens-des-flux.md)
 
-{include}(09-projection-dto.md)
+{include}(08-modules.md)
 
-{include}(10-couche-application.md)
+{raw latex}(\part{Construire le cœur})
 
-{include}(11-adaptateurs.md)
+{include}(09-positions.md)
 
-{include}(12-raii.md)
+{include}(10-champ-de-mines.md)
 
-{include}(13-tests.md)
+{include}(11-la-partie.md)
 
-{include}(14-avant-apres.md)
+{include}(12-grille-generique.md)
+
+{include}(13-ouverture-en-cascade.md)
+
+{include}(14-ce-que-voit-l-interface.md)
+
+{raw latex}(\part{L'application})
+
+{include}(15-commandes.md)
+
+{include}(16-hasard.md)
+
+{include}(17-session.md)
+
+{raw latex}(\part{Les adaptateurs})
+
+{include}(18-terminal.md)
+
+{include}(19-lanceur.md)
+
+{include}(20-fenetre-sdl.md)
+
+{include}(21-raii.md)
+
+{raw latex}(\part{Vérifier et prendre du recul})
+
+{include}(22-tests.md)
+
+{include}(23-avant-apres.md)
+
+{include}(24-et-maintenant.md)
+
+{raw latex}(\part{Le labo})
 
 {include}(../steps/README.md)
 
@@ -67,3 +103,5 @@ press:
 {include}(regles-du-jeu.md)
 
 {include}(uml.md)
+
+{include}(README.md)

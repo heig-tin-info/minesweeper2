@@ -114,5 +114,5 @@ Tous les tests doivent passer, sans aucun avertissement du compilateur.
 une règle à protéger, « chaque chiffre vaut le nombre de mines voisines ».
 Vous y utiliserez `neighbors`, `contains` et `indexOf`.
 
-Pour aller plus loin : le chapitre [Objets valeur](../../docs/03-objets-valeur.md)
+Pour aller plus loin : le chapitre [Positions, taille, voisins](../../docs/09-positions.md)
 de la documentation.
