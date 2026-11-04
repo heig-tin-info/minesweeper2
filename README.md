@@ -27,7 +27,8 @@ Prérequis : `make` et un compilateur C++20 (`g++` 11+ ou `clang++` 14+).
 ```bash
 make test                     # compile et lance les tests
 make run                      # partie 9x9 avec 10 mines
-make run ARGS="16 30 99 42"   # lignes, colonnes, mines, graine
+make run ARGS=20              # 20 mines sur la grille 9x9
+make run ARGS="99 16 30 42"   # mines, lignes, colonnes, graine
 ```
 
 | Commande | Effet |

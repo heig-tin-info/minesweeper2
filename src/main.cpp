@@ -1,7 +1,7 @@
 // Composition root: the only place that knows every concrete class. It
 // chooses the adapters, plugs them into the ports and starts the game.
 //
-//   minesweeper [rows cols mines [seed]]
+//   minesweeper [mines [rows cols [seed]]]
 #include <ctime>
 #include <exception>
 #include <iostream>
@@ -14,9 +14,9 @@
 
 int main(int argc, char* argv[]) {
     try {
-        const int rows = argc > 3 ? std::stoi(argv[1]) : 9;
-        const int cols = argc > 3 ? std::stoi(argv[2]) : 9;
-        const int mines = argc > 3 ? std::stoi(argv[3]) : 10;
+        const int mines = argc > 1 ? std::stoi(argv[1]) : 10;
+        const int rows = argc > 3 ? std::stoi(argv[2]) : 9;
+        const int cols = argc > 3 ? std::stoi(argv[3]) : 9;
         const unsigned seed = argc > 4 ? std::stoul(argv[4]) : std::time(nullptr);
 
         RandomLayout layout{seed};
@@ -25,7 +25,7 @@ int main(int argc, char* argv[]) {
         play(game, console);
     } catch (const std::exception& e) {
         std::cerr << "error: " << e.what() << "\nusage: " << argv[0]
-                  << " [rows cols mines [seed]]\n";
+                  << " [mines [rows cols [seed]]]\n";
         return 1;
     }
 }

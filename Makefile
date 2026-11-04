@@ -1,7 +1,7 @@
 # Build the game and its tests.
 #   make        build everything
 #   make test   build and run the tests
-#   make run    play in the terminal (make run ARGS="9 9 10 42")
+#   make run    play in the terminal (make run ARGS="10 9 9 42")
 #   make clean  remove the build products
 
 CXX      ?= g++
