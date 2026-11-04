@@ -2,6 +2,7 @@
 *.out
 build/
 build-*/
-minesweeper-*
+docs/diagrams/
 .vscode/
 *.swp
+steps/*/run_tests

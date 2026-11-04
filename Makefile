@@ -1,79 +1,34 @@
-# Default Makefile for the Minesweeper project. Generates console and SDL builds
-# while keeping configuration simple and overridable from the command line.
+# Thin convenience wrapper around CMake, which is the actual build system.
+#   make          build everything (the SDL front-end only if SDL2 is found)
+#   make test     build and run the unit and architecture tests
+#   make run      play in the terminal
+#   make run-sdl  play in a window
+#   make doc      build the printable PDF of docs/ (needs uv for TeXSmith)
 
-# Toolchain ------------------------------------------------------------------
-CXX ?= g++
-CXXFLAGS ?= -std=c++17 -Wall -Wextra -pedantic
-CPPFLAGS ?= -I.
-LDFLAGS ?=
+BUILD ?= build
+ARGS ?=
+TEXSMITH ?= uvx texsmith
 
-# Output directories ---------------------------------------------------------
-BUILD_DIR ?= build
-OBJ_DIR := $(BUILD_DIR)/obj
-BIN_DIR := $(BUILD_DIR)
+.PHONY: all configure test run run-sdl doc clean
 
-# Targets --------------------------------------------------------------------
-CONSOLE_TARGET := $(BIN_DIR)/minesweeper-console
-SDL_TARGET := $(BIN_DIR)/minesweeper-sdl
+all: configure
+	cmake --build $(BUILD) -j
 
-CONSOLE_OBJS := $(OBJ_DIR)/console_main.o
+configure:
+	cmake -S . -B $(BUILD)
 
-# SDL configuration via pkg-config -------------------------------------------
-SDL2_PKG_CONFIG ?= pkg-config
-SDL2_AVAILABLE := $(shell $(SDL2_PKG_CONFIG) --exists sdl2 SDL2_ttf && echo yes)
+test: all
+	ctest --test-dir $(BUILD) --output-on-failure
 
-ifeq ($(SDL2_AVAILABLE),yes)
-SDL_OBJS := $(OBJ_DIR)/sdl_main.o
-SDL2_CFLAGS := $(shell $(SDL2_PKG_CONFIG) --cflags sdl2 SDL2_ttf)
-SDL2_LIBS := $(shell $(SDL2_PKG_CONFIG) --libs sdl2 SDL2_ttf)
-else
-SDL_OBJS :=
-SDL2_CFLAGS :=
-SDL2_LIBS :=
-endif
+run: all
+	./$(BUILD)/minesweeper-console $(ARGS)
 
-# Default target -------------------------------------------------------------
-.PHONY: all
-all: $(CONSOLE_TARGET)
+run-sdl: all
+	./$(BUILD)/minesweeper-sdl $(ARGS)
 
-.PHONY: console
-console: $(CONSOLE_TARGET)
+doc:
+	$(TEXSMITH) docs/livre.md -t book -o $(BUILD)/doc --build
+	@echo "PDF: $(BUILD)/doc/livre.pdf"
 
-.PHONY: sdl
-sdl: $(SDL_TARGET)
-
-.PHONY: run
-run: $(CONSOLE_TARGET)
-	@$(CONSOLE_TARGET)
-
-.PHONY: clean
 clean:
-	@echo "[clean] Removing $(BUILD_DIR)"
-	@rm -rf "$(BUILD_DIR)"
-
-# Build rules ----------------------------------------------------------------
-$(CONSOLE_TARGET): $(CONSOLE_OBJS) | $(BIN_DIR)
-	@echo "[link] $@"
-	@$(CXX) $^ $(LDFLAGS) -o $@
-
-ifeq ($(SDL2_AVAILABLE),yes)
-$(SDL_TARGET): $(SDL_OBJS) | $(BIN_DIR)
-	@echo "[link] $@"
-	@$(CXX) $^ $(LDFLAGS) $(SDL2_LIBS) -o $@
-
-$(OBJ_DIR)/sdl_main.o: main.cpp | $(OBJ_DIR)
-	@echo "[cxx ] $< (SDL)"
-	@$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(SDL2_CFLAGS) -DSDL -c $< -o $@
-else
-$(SDL_TARGET):
-	@echo "[error] SDL2 front-end requires pkg-config entries for sdl2 and SDL2_ttf" >&2
-	@false
-endif
-
-$(OBJ_DIR)/console_main.o: main.cpp | $(OBJ_DIR)
-	@echo "[cxx ] $<"
-	@$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c $< -o $@
-
-# Directory creation ---------------------------------------------------------
-$(BIN_DIR) $(OBJ_DIR):
-	@mkdir -p $@
+	rm -rf $(BUILD)
