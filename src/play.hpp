@@ -1,10 +1,18 @@
+/**
+ * @file play.hpp
+ * The application: the game loop that connects a user interface to a game.
+ */
 #pragma once
 
 #include "game.hpp"
 #include "ports.hpp"
 
-// The application: the game loop. It only knows the ports, so the same loop
-// drives a terminal, a window or a scripted test.
+/**
+ * Runs a game until it is won, lost or the player quits.
+ *
+ * It only knows the ports, so the same loop drives a terminal, a window or
+ * a scripted test.
+ */
 inline void play(Game& game, UserInterface& ui) {
     ui.show(game);
     while (game.status() == Status::Playing) {

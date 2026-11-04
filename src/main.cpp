@@ -1,7 +1,10 @@
-// Composition root: the only place that knows every concrete class. It
-// chooses the adapters, plugs them into the ports and starts the game.
-//
-//   minesweeper [mines [rows cols [seed]]]
+/**
+ * @file main.cpp
+ * Composition root: the only place that knows every concrete class.
+ *
+ * It chooses the adapters, plugs them into the ports and starts the game.
+ * Usage: `minesweeper [mines [rows cols [seed]]]`
+ */
 #include <exception>
 #include <iostream>
 #include <string>

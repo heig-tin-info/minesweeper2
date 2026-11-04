@@ -1,6 +1,10 @@
-// Unit tests: plain asserts, no framework. Run with `make test`.
-// The ports let us replace the random generator and the terminal by test
-// doubles, so every test is deterministic and needs no keyboard.
+/**
+ * @file tests.cpp
+ * Unit tests: plain asserts, no framework. Run with `make test`.
+ *
+ * The ports let us replace the random generator and the terminal by test
+ * doubles, so every test is deterministic and needs no keyboard.
+ */
 #undef NDEBUG
 #include <cassert>
 #include <iostream>
@@ -12,7 +16,9 @@
 #include "../src/play.hpp"
 #include "../src/random_layout.hpp"
 
-// Test double for MineLayout: the mines are where the test says.
+/**
+ * Test double for MineLayout: the mines are where the test says.
+ */
 struct FixedLayout : MineLayout {
     std::vector<Pos> mines;
     Pos firstClick{-1, -1};
@@ -23,7 +29,9 @@ struct FixedLayout : MineLayout {
     }
 };
 
-// Test double for UserInterface: replays a script of commands.
+/**
+ * Test double for UserInterface: replays a script of commands.
+ */
 struct ScriptedUi : UserInterface {
     std::vector<Command> script;
     int shown = 0;
@@ -36,9 +44,11 @@ struct ScriptedUi : UserInterface {
     }
 };
 
-// 3x3 grid, one mine in the corner:   * 1 .
-//                                     1 1 .
-//                                     . . .
+/**
+ * 3x3 grid, one mine in the corner:   * 1 .
+ *                                     1 1 .
+ *                                     . . .
+ */
 static void cascadeOpensTheEmptyRegionAndWins() {
     FixedLayout layout{{{0, 0}}};
     Game game{3, 3, 1, layout};

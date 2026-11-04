@@ -1,13 +1,21 @@
+/**
+ * @file game.hpp
+ * The domain: the rules of Minesweeper, and nothing else.
+ *
+ * No input, no output, no randomness: everything external goes through a
+ * port (see ports.hpp).
+ */
 #pragma once
 
-// The domain: the rules of Minesweeper, and nothing else. No input, no
-// output, no randomness: everything external goes through a port.
 #include <vector>
 
 #include "ports.hpp"
 
 enum class Status { Playing, Won, Lost };
 
+/**
+ * Everything the game knows about one cell.
+ */
 struct Cell {
     bool mine = false;
     bool revealed = false;
@@ -15,22 +23,45 @@ struct Cell {
     int adjacent = 0;  // number of mines among the 8 neighbours
 };
 
+/**
+ * One game of Minesweeper: a grid of cells and the rules that change it.
+ */
 class Game {
 public:
-    // Throws std::invalid_argument unless 1 <= mines < rows * cols.
+    /**
+     * Creates a grid where every cell is hidden. The mines are placed by
+     * `layout` on the first reveal.
+     * @throws std::invalid_argument unless 1 <= mines < rows * cols.
+     */
     Game(int rows, int cols, int mines, MineLayout& layout);
 
-    // Commands. Throw std::out_of_range for a position outside the grid.
-    // Once the game is over, they do nothing.
+    /**
+     * Reveals a cell; if it has no adjacent mine, opens its neighbours too.
+     * Does nothing on a flagged cell or once the game is over.
+     * @throws std::out_of_range for a position outside the grid.
+     */
     void reveal(Pos p);
+
+    /**
+     * Puts or removes a flag on a hidden cell.
+     * @throws std::out_of_range for a position outside the grid.
+     */
     void toggleFlag(Pos p);
 
-    // Queries.
     int rows() const { return rows_; }
     int cols() const { return cols_; }
     int mines() const { return mines_; }
     Status status() const { return status_; }
+
+    /**
+     * Tells whether `p` is inside the grid.
+     */
     bool contains(Pos p) const;
+
+    /**
+     * Read-only access to a cell.
+     * @throws std::out_of_range for a position outside the grid.
+     */
     const Cell& at(Pos p) const;
 
 private:

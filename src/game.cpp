@@ -1,3 +1,7 @@
+/**
+ * @file game.cpp
+ * Implementation of the rules declared in game.hpp.
+ */
 #include "game.hpp"
 
 #include <stdexcept>
@@ -42,6 +46,9 @@ void Game::toggleFlag(Pos p) {
     cell(p).flagged = !c.flagged;
 }
 
+/**
+ * The (up to 8) cells around `p` that are inside the grid.
+ */
 std::vector<Pos> Game::neighbours(Pos p) const {
     std::vector<Pos> result;
     for (int dr = -1; dr <= 1; ++dr)
@@ -52,7 +59,9 @@ std::vector<Pos> Game::neighbours(Pos p) const {
     return result;
 }
 
-// Asks the layout where the mines go, then counts each cell's neighbours.
+/**
+ * Asks the layout where the mines go, then counts each cell's neighbours.
+ */
 void Game::plant(Pos firstClick) {
     for (Pos m : layout_.place(rows_, cols_, mines_, firstClick)) cell(m).mine = true;
     for (int r = 0; r < rows_; ++r)
@@ -62,7 +71,10 @@ void Game::plant(Pos firstClick) {
     planted_ = true;
 }
 
-// Reveals `p`; if it has no adjacent mine, opens its neighbours too.
+/**
+ * Reveals `p`; if it has no adjacent mine, opens its neighbours too
+ * (recursively, so a whole empty region opens at once).
+ */
 void Game::open(Pos p) {
     Cell& c = cell(p);
     if (c.revealed || c.flagged || c.mine) return;
