@@ -1,7 +1,4 @@
-*.o
-*.d
 /minesweeper
-/tests/tests
 build/
 .vscode/
 *.swp

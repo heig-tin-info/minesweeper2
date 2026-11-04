@@ -1,4 +1,4 @@
-# Build the game and its tests.
+# Build the game and its tests. Intermediate files (.o, .d) go to build/.
 #   make        build everything
 #   make test   build and run the tests
 #   make run    play in the terminal (make run ARGS="10 9 9 42")
@@ -8,25 +8,32 @@ CXX      ?= g++
 CXXFLAGS ?= -std=c++20 -Wall -Wextra -Wpedantic -g
 CXXFLAGS += -MMD -MP   # also track header dependencies (.d files)
 
-LIB = src/game.o src/play.o src/random_layout.o src/console.o
+BUILD = build
+LIB   = $(BUILD)/src/game.o $(BUILD)/src/play.o \
+        $(BUILD)/src/random_layout.o $(BUILD)/src/console.o
 
-all: minesweeper tests/tests
+all: minesweeper $(BUILD)/unit_tests
 
-minesweeper: src/main.o $(LIB)
+minesweeper: $(BUILD)/src/main.o $(LIB)
 	$(CXX) $^ -o $@
 
-tests/tests: tests/tests.o $(LIB)
+$(BUILD)/unit_tests: $(BUILD)/tests/tests.o $(LIB)
 	$(CXX) $^ -o $@
 
-test: tests/tests
-	./tests/tests
+# build/src/game.o is compiled from src/game.cpp, and so on.
+$(BUILD)/%.o: %.cpp
+	@mkdir -p $(@D)
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+test: $(BUILD)/unit_tests
+	./$(BUILD)/unit_tests
 
 run: minesweeper
 	./minesweeper $(ARGS)
 
 clean:
-	rm -f minesweeper tests/tests src/*.o src/*.d tests/*.o tests/*.d
+	rm -rf $(BUILD) minesweeper
 
--include $(wildcard src/*.d tests/*.d)
+-include $(shell find $(BUILD) -name '*.d' 2>/dev/null)
 
 .PHONY: all test run clean
